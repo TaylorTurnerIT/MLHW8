@@ -113,7 +113,7 @@ def _():
 
     print(f'Train: {X_train.shape}, Val: {X_val.shape}, Test: {X_test.shape}')
     print(f'Positive class rate: {y_binary.mean():.3f}')
-    return
+    return (np,)
 
 
 @app.cell(hide_code=True)
@@ -209,9 +209,7 @@ def _(mo):
 
 
 @app.cell
-def _():
-    import numpy as np
-
+def _(np):
     def sigmoid(x):
         return 1 / (1 + np.exp(-x))
 
