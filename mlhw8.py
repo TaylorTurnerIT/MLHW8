@@ -94,12 +94,12 @@ def _():
     import seaborn as sns
 
     np.random.seed(42)
-    sns.set_style('whitegrid')
-    plt.rcParams['figure.figsize'] = (10, 6)
+    sns.set_style("whitegrid")
+    plt.rcParams["figure.figsize"] = (10, 6)
 
     # Load MNIST
-    mnist = fetch_openml('mnist_784', version=1, as_frame=False, parser='auto')
-    X_all = mnist.data.astype(float) / 255.0   # normalize to [0, 1]
+    mnist = fetch_openml("mnist_784", version=1, as_frame=False, parser="auto")
+    X_all = mnist.data.astype(float) / 255.0  # normalize to [0, 1]
     y_all = mnist.target.astype(int)
 
     # Binary label: 1 if digit is 6 or 7, else 0
@@ -107,12 +107,14 @@ def _():
 
     # Split: 70 / 15 / 15
     X_temp, X_test, y_temp, y_test = train_test_split(
-        X_all, y_binary, test_size=0.15, random_state=42)
+        X_all, y_binary, test_size=0.15, random_state=42
+    )
     X_train, X_val, y_train, y_val = train_test_split(
-        X_temp, y_temp, test_size=0.15/0.85, random_state=42)
+        X_temp, y_temp, test_size=0.15 / 0.85, random_state=42
+    )
 
-    print(f'Train: {X_train.shape}, Val: {X_val.shape}, Test: {X_test.shape}')
-    print(f'Positive class rate: {y_binary.mean():.3f}')
+    print(f"Train: {X_train.shape}, Val: {X_val.shape}, Test: {X_test.shape}")
+    print(f"Positive class rate: {y_binary.mean():.3f}")
     return (np,)
 
 
@@ -136,7 +138,13 @@ def _(mo):
 
     Answer the following. Show all work.
     1. The decision boundary of a neuron is the set of inputs where its output (the sigmoid activation) is exactly 0.5. Give the equation of the decision boundary for this neuron. Your answer should be an equation relating $input_1$ and $input_2$.
+
+    $\hat y = w_1 * input_1 + w_2 * input_2 + bias$
+    $\implies \hat y = input_1 + input_2$
+
     2. Plot this boundary on a set of axes with $input_1$ on the x-axis and $input_2$ on the y-axis, for values ranging from $-2$ to $2$. Label the region where the neuron outputs greater than 0.5 and the region where it outputs less than 0.5.
+
+
     3. In 2–3 sentences, explain what this boundary would look like if the neuron had 3 inputs instead of 2. How does the geometry change?
 
     ### Part 1b — Linear Separability (10 pts)
@@ -213,6 +221,7 @@ def _(np):
     def sigmoid(x):
         return 1 / (1 + np.exp(-x))
 
+
     class Layer:
         def __init__(self, n_neurons, n_features, random_seed=42):
             pass
@@ -222,7 +231,6 @@ def _(np):
 
         def backward(self, dL_dP_hat, lr):
             pass
-
 
     return
 
