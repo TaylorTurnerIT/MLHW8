@@ -139,8 +139,34 @@ def _(mo):
     Answer the following. Show all work.
     1. The decision boundary of a neuron is the set of inputs where its output (the sigmoid activation) is exactly 0.5. Give the equation of the decision boundary for this neuron. Your answer should be an equation relating $input_1$ and $input_2$.
 
-    $\hat y = w_1 * input_1 + w_2 * input_2 + bias$
-    $\implies \hat y = input_1 + input_2$
+    To calculate the point where the sigmoid activation is 0.5, we must first calculate the result of $\hat y$ and insert it into that function.
+
+    Let $\hat y$ be
+    $$\hat y = w_1 * input_1 + w_2 * input_2 + b$$
+
+    Sigmoid activation function
+
+    $$\frac{1}{1 + e^{-\hat y}}$$
+
+    Plugging in the values for $\hat y$, we see
+
+    $$\hat y = input_1 + input_2$$
+
+    So the sigmoid becomes
+
+    $$\frac{1}{1+e^{-(input_1 + input_2)}}$$
+
+    To calculate the value at 0.5, we make the equation equal to that value and solve for the inputs.
+
+    $$0.5 = \frac{1}{1+e^{-(input_1 + input_2)}}$$
+    $$\implies 1 = 0.5 * 1+e^{-(input_1 + input_2)}$$
+    $$\implies 2 = 1 + e^{-(input_1 + input_2)}$$
+    $$\implies 1 = e^{-(input_1 + input_2)}$$
+    $$\implies ln(1) = -(input_1 + input_2)$$
+    $$\implies 0 = -(input_1 + input_2)$$
+    $$\implies 0 = input_1 + input_2$$
+
+    With this in mind, we can generalize and say that when $\hat y = 0$, the result of the sigmoid activation function is zero.
 
     2. Plot this boundary on a set of axes with $input_1$ on the x-axis and $input_2$ on the y-axis, for values ranging from $-2$ to $2$. Label the region where the neuron outputs greater than 0.5 and the region where it outputs less than 0.5.
 
