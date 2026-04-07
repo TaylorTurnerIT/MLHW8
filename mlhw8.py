@@ -115,7 +115,7 @@ def _():
 
     print(f"Train: {X_train.shape}, Val: {X_val.shape}, Test: {X_test.shape}")
     print(f"Positive class rate: {y_binary.mean():.3f}")
-    return (np,)
+    return np, plt
 
 
 @app.cell(hide_code=True)
@@ -169,31 +169,127 @@ def _(mo):
     With this in mind, we can generalize and say that when $\hat y = 0$, the result of the sigmoid activation function is zero.
 
     2. Plot this boundary on a set of axes with $input_1$ on the x-axis and $input_2$ on the y-axis, for values ranging from $-2$ to $2$. Label the region where the neuron outputs greater than 0.5 and the region where it outputs less than 0.5.
+    """)
+    return
 
 
+@app.cell
+def _(np, plt):
+    # 1. Define the range for input_1 from -2 to 2
+    input_1 = np.linspace(-2, 2, 100)
+
+    # 2. Calculate input_2 based on the decision boundary equation: input_2 = -input_1
+    input_2 = -input_1
+
+    # 3. Create the plot
+    plt.figure(figsize=(8, 8))
+
+    # Plot the decision boundary line
+    plt.plot(
+        input_1,
+        input_2,
+        color="black",
+        linewidth=2,
+        label="Decision Boundary ($\hat{y} = 0$)",
+    )
+
+    # 4. Fill the regions
+    # The region where output > 0.5 is where input_1 + input_2 > 0 (or input_2 > -input_1)
+    plt.fill_between(
+        input_1, input_2, 2, color="blue", alpha=0.2, label="Output > 0.5"
+    )
+
+    # The region where output < 0.5 is where input_1 + input_2 < 0 (or input_2 < -input_1)
+    plt.fill_between(
+        input_1, -2, input_2, color="red", alpha=0.2, label="Output < 0.5"
+    )
+
+    # 5. Format the axes and labels
+    plt.xlim(-2, 2)
+    plt.ylim(-2, 2)
+    plt.xlabel("$input_1$")
+    plt.ylabel("$input_2$")
+    plt.title("Single Neuron Decision Boundary")
+
+    # Add origin axes for better readability
+    plt.axhline(0, color="black", linewidth=0.5)
+    plt.axvline(0, color="black", linewidth=0.5)
+    plt.grid(color="gray", linestyle="--", linewidth=0.5, alpha=0.5)
+
+    # Add the legend
+    plt.legend(loc="upper right")
+
+    # Show the plot
+    plt.show()
+    return
+
+
+@app.cell
+def _(mo):
+    mo.md(r"""
     3. In 2–3 sentences, explain what this boundary would look like if the neuron had 3 inputs instead of 2. How does the geometry change?
+
+    We would see a new point of control to modify the line, but no change to the shape. If we saw something like $x^2$ instead that would start to modify geometry.
 
     ### Part 1b — Linear Separability (10 pts)
     There are four datasets below shown in the figure. For each one, state whether a single neuron could learn to perfectly separate the two classes, and explain your reasoning in 1–2 sentences.
 
-    ![Which of these can a single neuron solve perfectly?](word/media/image1.png)
+    no, yes, yes, no
 
+    1. For the first we cannot draw any line that separates a 2D projection of a doughnut.
+    2. Yes, we can draw a 2D line that could act as a plane by making the change in $z$ nothing.
+    3. Yes, proof by above plot.
+    4. No, there is a non-linear gap between the two galaxy clusters.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.image(
+        src="image1.png",
+        alt="Which of these can a single neuron solve perfectly?",
+        width=500,  # Optional: adjust width as needed
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     ### Part 1c — Symmetry and Identical Initialization (5 pts)
     Consider a neural network with 2 neurons in the first layer and 1 neuron in the second layer. All weights and biases in the entire network are initialized to 0. After 1 epoch of training, the second neuron in the first layer has learned weights `[1, 2]` as shown in the image below.
 
     What are the weights of the first neuron in the first layer after that same epoch? State your answer and explain why in 3–4 sentences.
 
-    ![Layer 1 Initialization Diagram](word/media/image2.png)
+    Since the initial weights were set to 0 and there was no random modification, they would deterministicly settle on the same local minima of [1,2]. Thus, we would have identical weights for both nodules.
+    """)
+    return
 
-    ---
 
+@app.cell(hide_code=True)
+def _(mo):
+    mo.image(src="image2.png", alt="Layer 1 Initialization Diagram")
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.image(
+        src="image3.png",
+        alt="Part 2 Network — All weights, biases, and inputs provided",
+    )
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     ## Part 2 — Backpropagation by Hand (35 pts)
     This part must be completed entirely by hand. You may write your work on paper and photograph it, or typeset it — either is acceptable. **No code for this part.**
 
     ### The Network
     You are given a two-layer network with the following parameters:
-
-    ![Part 2 Network — All weights, biases, and inputs provided](word/media/image3.png)
 
     | Component | Values |
     | :--- | :--- |
