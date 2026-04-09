@@ -115,7 +115,7 @@ def _():
 
     print(f"Train: {X_train.shape}, Val: {X_val.shape}, Test: {X_test.shape}")
     print(f"Positive class rate: {y_binary.mean():.3f}")
-    return np, plt
+    return X_train, fetch_openml, np, plt, train_test_split, y_train
 
 
 @app.cell(hide_code=True)
@@ -309,7 +309,8 @@ def _(mo):
     * $y_{11}$ and $p_{11}$: the pre-activation and activation of Layer 1, Neuron 1
     * $y_{12}$ and $p_{12}$: the pre-activation and activation of Layer 1, Neuron 2
     * $y_2$ and $p_2$: the pre-activation and activation of Layer 2
-    * $L$: the binary cross-entropy loss
+
+
 
     $$L = -[y \cdot \log(\hat{p}) + (1-y) \cdot \log(1-\hat{p})]$$
 
@@ -344,17 +345,81 @@ def _(np):
         return 1 / (1 + np.exp(-x))
 
 
+    class Neuron:
+        def __init__(self, n_features: int):
+            """
+            Initialize weights and bias.
+            W : np.ndarray, shape (1, n_features)  small random values
+            b : float, initialized to 0
+            """
+            self.W = np.random.randn(1, n_features) * 0.01
+            self.b: float = 0.0
+
+        def forward(self, X: np.ndarray) -> np.ndarray:
+            self.X = X
+            # Assert input shape
+            assert X.shape[1] == self.W.shape[1], (
+                f"X has {X.shape[1]} features, but W expects {self.W.shape[1]}"
+            )
+
+            Y_hat = X @ self.W.T + self.b
+            assert Y_hat.shape == (X.shape[0], 1), (
+                f"Y_hat shape {Y_hat.shape} != expected ({X.shape[0]}, 1)"
+            )
+
+            self.P_hat = 1 / (1 + np.exp(-Y_hat))  # overflow
+            self.P_hat = np.clip(self.P_hat, 1e-9, 1 - 1e-9)
+
+            # Assert output shape
+            assert self.P_hat.shape == (X.shape[0], 1), (
+                f"P_hat shape {self.P_hat.shape} is incorrect"
+            )
+            return self.P_hat
+
+        def backward(self, dL_dP_hat: np.ndarray, lr: float):
+            # Assert incoming gradient shape
+            assert dL_dP_hat.shape == self.P_hat.shape, (
+                f"dL_dP_hat shape {dL_dP_hat.shape} doesn't match P_hat shape {self.P_hat.shape}"
+            )
+
+            # Compute sigmoid derivative term
+            sigmoid_grad = dL_dP_hat * self.P_hat * (1 - self.P_hat)
+            assert sigmoid_grad.shape == self.P_hat.shape
+
+            # Gradient w.r.t. weights
+            dL_dW = (
+                sigmoid_grad.T @ self.X / self.X.shape[0]
+            )  # shape (1, n_features)
+            assert dL_dW.shape == self.W.shape, (
+                f"dL_dW shape {dL_dW.shape} != W shape {self.W.shape}"
+            )
+
+            # Gradient w.r.t. bias
+            dL_db = np.mean(sigmoid_grad)  # scalar
+
+            # Update weights and bias
+            self.W = self.W - lr * dL_dW
+            self.b = self.b - lr * dL_db
+
+
     class Layer:
         def __init__(self, n_neurons, n_features, random_seed=42):
-            pass
+            self.neurons = []
+            for neuron in range(n_neurons):
+                self.neurons.append(Neuron(n_features))
 
         def forward(self, X):
-            pass
+            # Sigmoid activated inferences
+            self.inferences = []
+            for neuron in self.neurons:
+                self.inferences.append(neuron.forward(X))
+            return np.hstack(self.inferences)
 
         def backward(self, dL_dP_hat, lr):
-            pass
+            for neuron in self.neurons:
+                neuron.backward(dL_dP_hat, lr)
 
-    return
+    return (Layer,)
 
 
 @app.cell(hide_code=True)
@@ -363,16 +428,6 @@ def _(mo):
     ### Part 3b — Batch Size Experiment on MNIST (20 pts)
     Using the network architecture and hyperparameters below, train four separate models on MNIST — one for each batch size. The only difference between the four models should be the batch size.
 
-    ```python
-    # Architecture: 1 hidden layer
-    layer1_neurons = 10
-    layer2_neurons = 1
-
-    lr = 0.1
-    n_epochs = 120
-    batch_sizes = ['full', 128, 32, 8]   # train once for each
-    ```
-
     * For "full" batch, pass the entire training set in a single forward/backward pass each epoch (standard gradient descent).
     * For all others, shuffle the training data at the start of each epoch and process it in mini-batches of the given size, performing one weight update per batch (stochastic gradient descent).
 
@@ -380,9 +435,89 @@ def _(mo):
     1. Plot all four training loss curves on one set of axes and all four validation loss curves on another. Use a legend to identify each batch size.
     2. How does convergence speed change as batch size decreases? Why does this change occur?
     3. Do any of the models show signs of overfitting?
+    """)
+    return
 
-    ---
 
+@app.cell
+def _(Layer, X_train, np, y_train):
+    """
+    import numpy as np
+    import matplotlib.pyplot as plt
+    from sklearn.datasets import fetch_openml
+    from sklearn.model_selection import train_test_split
+    import seaborn as sns
+
+    np.random.seed(42)
+    sns.set_style("whitegrid")
+    plt.rcParams["figure.figsize"] = (10, 6)
+
+    # Load MNIST
+    mnist = fetch_openml("mnist_784", version=1, as_frame=False, parser="auto")
+    X_all = mnist.data.astype(float) / 255.0  # normalize to [0, 1]
+    y_all = mnist.target.astype(int)
+
+    # Binary label: 1 if digit is 6 or 7, else 0
+    y_binary = ((y_all == 6) | (y_all == 7)).astype(int).reshape(-1, 1)
+
+    # Split: 70 / 15 / 15
+    X_temp, X_test, y_temp, y_test = train_test_split(
+        X_all, y_binary, test_size=0.15, random_state=42
+    )
+    X_train, X_val, y_train, y_val = train_test_split(
+        X_temp, y_temp, test_size=0.15 / 0.85, random_state=42
+    )
+
+    print(f"Train: {X_train.shape}, Val: {X_val.shape}, Test: {X_test.shape}")
+    print(f"Positive class rate: {y_binary.mean():.3f}")
+    """
+
+    # Architecture: 1 hidden layer
+    layer1_neurons = 10
+    layer2_neurons = 1
+
+    lr = 0.1
+    n_epochs = 120
+    batch_sizes = ["full", 128, 32, 8]  # train once for each
+    n_features = X_train.shape[1]
+    # Train: (49000, 784), Val: (10500, 784), Test: (10500, 784)
+
+
+    def get_batches(X, y, batch_size):
+        """Yield (X_batch, y_batch) slices. 'full' yields the whole dataset once."""
+        n = X.shape[0]
+        if batch_size == "full":
+            yield X, y
+            return
+        indices = np.random.permutation(n)
+        for start in range(0, n, batch_size):
+            idx = indices[start : start + batch_size]
+            yield X[idx], y[idx]
+
+
+    for batch_size in batch_sizes:
+        layers = [
+            Layer(n_neurons=layer1_neurons, n_features=n_features),
+            Layer(n_neurons=layer2_neurons, n_features=layer1_neurons),
+        ]
+
+        for epoch in range(n_epochs):
+            for X_batch, y_batch in get_batches(X_train, y_train, batch_size):
+                # --- forward pass ---
+                out = X_batch
+                for layer in layers:
+                    out = layer.forward(out)
+
+                # --- backward pass ---
+                dL_dP = (out - y_batch) / y_batch.shape[0]
+                for layer in reversed(layers):
+                    layer.backward(dL_dP, lr)
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     ## Part 4 — MAGIC Gamma Telescope (25 pts)
     Apply your neural network to the MAGIC Gamma Telescope dataset from Assignment 7. You already have a single-neuron logistic regression baseline from that assignment — this part asks whether a multi-layer network does better.
 
@@ -405,9 +540,169 @@ def _(mo):
     5. Did the neural network improve over logistic regression? How large is the gain?
     6. In Assignment 7 you added degree-2 polynomial features to try to improve over the single-neuron baseline. Compare the test performance of that model to your neural network here. Which performed better?
     7. In 3–4 sentences, reflect on why polynomial features improved the single neuron and why the multi-layer neural network improved over both.
+    """)
+    return
 
-    ---
 
+@app.cell
+def _(Layer, fetch_openml, np, train_test_split):
+    def _():
+        from sklearn.preprocessing import MinMaxScaler
+
+        # --- Load & prep ---
+        magic = fetch_openml("magic", version=1, as_frame=False, parser="auto")
+        X_magic = magic.data.astype(float)
+        y_magic = (
+            (magic.target == "g").astype(int).reshape(-1, 1)
+        )  # gamma=1, hadron=0
+
+        X_temp_m, X_test_m, y_temp_m, y_test_m = train_test_split(
+            X_magic, y_magic, test_size=0.15, random_state=42
+        )
+        X_train_m, X_val_m, y_train_m, y_val_m = train_test_split(
+            X_temp_m, y_temp_m, test_size=0.15 / 0.85, random_state=42
+        )
+
+        scaler = MinMaxScaler()
+        X_train_m = scaler.fit_transform(X_train_m)  # fit on train only
+        X_val_m = scaler.transform(X_val_m)
+        X_test_m = scaler.transform(X_test_m)
+
+        # --- Hyperparameters ---
+        layer1_neurons = 60
+        layer2_neurons = 25
+        layer3_neurons = 1
+        lr_magic = 0.01
+        n_epochs_m = 600
+        batch_size_m = 64
+        n_features_m = X_train_m.shape[1]  # 10
+
+        # --- Helpers ---
+        def forward_pass(layers, X):
+            out = X
+            for layer in layers:
+                out = layer.forward(out)
+            return out
+
+        def compute_loss(p_hat, y):
+            return -np.mean(y * np.log(p_hat) + (1 - y) * np.log(1 - p_hat))
+
+        def get_batches(X, y, batch_size):
+            n = X.shape[0]
+            indices = np.random.permutation(n)
+            for start in range(0, n, batch_size):
+                idx = indices[start : start + batch_size]
+                yield X[idx], y[idx]
+
+        # --- Build layers ---
+        np.random.seed(42)
+        layers_magic = [
+            Layer(n_neurons=layer1_neurons, n_features=n_features_m),
+            Layer(n_neurons=layer2_neurons, n_features=layer1_neurons),
+            Layer(n_neurons=layer3_neurons, n_features=layer2_neurons),
+        ]
+
+        train_losses, val_losses = [], []
+
+        for epoch in range(n_epochs_m):
+            for X_batch, y_batch in get_batches(
+                X_train_m, y_train_m, batch_size_m
+            ):
+                out = forward_pass(layers_magic, X_batch)
+                dL_dP = (out - y_batch) / y_batch.shape[0]
+                for layer in reversed(layers_magic):
+                    layer.backward(dL_dP, lr_magic)
+
+            train_p = forward_pass(layers_magic, X_train_m)
+            val_p = forward_pass(layers_magic, X_val_m)
+            train_losses.append(compute_loss(train_p, y_train_m))
+            val_losses.append(compute_loss(val_p, y_val_m))
+
+            if (epoch + 1) % 100 == 0:
+                print(
+                    f"Epoch {epoch + 1}/{n_epochs_m} — train loss: {train_losses[-1]:.4f}  val loss: {val_losses[-1]:.4f}"
+                )
+
+        return train_losses, val_losses
+
+
+    _()
+    return
+
+
+@app.cell
+def _(
+    X_test_m,
+    accuracy_score,
+    auc,
+    f1_score,
+    forward_pass,
+    layers_magic,
+    plt,
+    precision_score,
+    recall_score,
+    roc_curve,
+    train_losses,
+    val_losses,
+    y_test_m,
+):
+    # --- Task 2: Loss curves ---
+    plt.figure()
+    plt.plot(train_losses, label="Train Loss")
+    plt.plot(val_losses, label="Val Loss")
+    plt.xlabel("Epoch")
+    plt.ylabel("BCE Loss")
+    plt.title("MAGIC — Training & Validation Loss (batch_size=64)")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+    # The curves are jagged because each mini-batch of 64 samples gives a slightly
+    # different gradient estimate — some batches are harder or easier than average,
+    # causing the loss to oscillate around the true gradient direction every epoch.
+    # Smaller batches produce noisier estimates, so the update direction fluctuates
+    # more than it would with the full dataset.
+
+    # --- Task 3: Metrics ---
+    test_p = forward_pass(layers_magic, X_test_m)
+    test_pred = (test_p >= 0.5).astype(int)
+
+    acc = accuracy_score(y_test_m, test_pred)
+    prec = precision_score(y_test_m, test_pred)
+    rec = recall_score(y_test_m, test_pred)
+    f1 = f1_score(y_test_m, test_pred)
+
+    # Fill in your Assignment 7 single-neuron results below
+    a7_acc, a7_prec, a7_rec, a7_f1 = 0.000, 0.000, 0.000, 0.000  # <-- replace
+
+    print("\n── Test Set Comparison ──────────────────────────────────")
+    print(f"{'Model':<25} {'Acc':>6} {'Prec':>6} {'Rec':>6} {'F1':>6}")
+    print(
+        f"{'A7 Single Neuron':<25} {a7_acc:>6.3f} {a7_prec:>6.3f} {a7_rec:>6.3f} {a7_f1:>6.3f}"
+    )
+    print(
+        f"{'3-Layer NN (60-25-1)':<25} {acc:>6.3f} {prec:>6.3f} {rec:>6.3f} {f1:>6.3f}"
+    )
+
+    # --- Task 4: ROC / AUC ---
+    fpr, tpr, _ = roc_curve(y_test_m, test_p)
+    roc_auc = auc(fpr, tpr)
+
+    plt.figure()
+    plt.plot(fpr, tpr, label=f"3-Layer NN (AUC = {roc_auc:.3f})")
+    plt.plot([0, 1], [0, 1], "k--", label="Random")
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title("MAGIC — ROC Curve")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+    return
+
+
+@app.cell(hide_code=True)
+def _(mo):
+    mo.md(r"""
     ## Going Beyond — SGD with Momentum
     *Required for 5xxx students | +20 bonus points for 4xxx students*
 
